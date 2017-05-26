@@ -1,18 +1,33 @@
-#include "AStar.h"
+﻿#include "AStar.h"
 
-int walkability[iMapWidth+1][iMapHeight+1];
-int openList[iMapWidth * iMapHeight + 2];   
-int whichList[iMapWidth + 1][iMapHeight + 1];
-int openX[iMapWidth * iMapHeight + 2];
-int openY[iMapWidth * iMapHeight + 2];
-int parentX[iMapWidth + 1][iMapHeight + 1];
-int parentY[iMapWidth + 1][iMapHeight + 1];
-int Fcost[iMapWidth * iMapHeight + 2];
-int Gcost[iMapWidth + 1][iMapHeight + 1];
-int Hcost[iMapWidth * iMapHeight + 2];
+int walkability[iMapWidth+1][iMapHeight+1];		// [x][y] 사각형이 벽인지 아닌지 표시
+int openList[iMapWidth * iMapHeight + 2];		// open list : 최소 바이너리 힙(F_cost)
+int whichList[iMapWidth + 1][iMapHeight + 1];	// [x][y] 사각형이  open인지 closed인지 아무것도 아닌지 표시
+int openX[iMapWidth * iMapHeight + 2];			// open list의 아이디에 매치되는 사각형의 x 좌표
+int openY[iMapWidth * iMapHeight + 2];			// open list의 아이디에 매치되는 사각형의 y 좌표
+int parentX[iMapWidth + 1][iMapHeight + 1];		// [x][y] 위치의 parent x 좌표
+int parentY[iMapWidth + 1][iMapHeight + 1];		// [x][y] 위치의 parent y 좌표
+int Fcost[iMapWidth * iMapHeight + 2];			// open list의 아이디에 매치되는 사각형의 F_cost
+int Gcost[iMapWidth + 1][iMapHeight + 1];		// [x][y] 위치의 G_cost
+int Hcost[iMapWidth * iMapHeight + 2];			// open list의 아이디에 매치되는 사각형의 H_cost
 int pathLength;
 int pathLocation;
-int* pathBank;
+int* pathBank;									// 경로 저장소
+
+void InitPathFinder()
+{
+	for (int x = 0; x < iMapWidth + 1; ++x)
+	{
+		for (int y = 0; y < iMapHeight + 1; ++y)
+		{
+			walkability[x][y] = walkable;
+		}
+	}
+	walkability[4][2] = unwalkable;
+	walkability[4][3] = unwalkable;
+	walkability[4][4] = unwalkable;
+
+}
 
 int FindPath(int startingX, int startingY, int targetingX, int targetingY)
 {  
@@ -32,14 +47,14 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
     if (startX == targetX && startY == targetY)
         return found;
     
-// 도착 위치가 벽이라면
+// 도착위치가 벽이라면
     if (walkability[targetX][targetY] == unwalkable)
         return nonexistent;
 
 // whichList 초기화
-    for (int x = 0; x < iMapWidth; ++x)
+    for (int x = 0; x < iMapWidth + 1; ++x)
     {
-        for (int y = 0; y < iMapHeight; ++y)
+        for (int y = 0; y < iMapHeight + 1; ++y)
             whichList[x][y] = 0;
     }
 
@@ -47,23 +62,23 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
     pathLocation = notStarted;
     Gcost[startX][startY] = 0;
 
-// 시작 사각형을 OpenList에 넣는다.
+// 시작 위치를 open list 에 넣는다.
     numberOfOpenListItems = 1;
     openList[1] = 1;
     openX[1] = startX; openY[1] = startY;
 
-// 경로 찾기
+/* 경로 찾기 시작 */
     do
     {
-        // OpenList에 아이템이 있다면
+        // open list 에 아이템이 있다면
         if (numberOfOpenListItems != 0)
         {
-            /* 최소 힙에서 아이템을 꺼낸다. */
+            /* open list(최소 힙)에서 아이템을 꺼낸다. */
 
-            // 현재 F_cost가 최소인 사각형을 parent 로 설정
+            // 현재 F_cost가 최소인 사각형을 parent로 설정
             parentXval = openX[openList[1]];
             parentYval = openY[openList[1]];
-            // 방금 openList에서 꺼낸 아이템을 closedList에 있는 것으로 표시
+            // 방금 open list 에서 꺼낸 아이템을 closed list 에 있는 것으로 표시
             whichList[parentXval][parentYval] = onClosedList;
 
             numberOfOpenListItems -= 1;
@@ -78,10 +93,10 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
                 for (a = parentXval - 1; a <= parentXval + 1; ++a)
                 {
                     // map을 벗어나면 pass
-                    if (a == -1 || b == -1 || a == iMapWidth || b == iMapHeight) continue;
+                    if (a == -1 || b == -1 || a == iMapWidth + 1 || b == iMapHeight + 1) continue;
                     // closedList에 있다면 pass
                     if (whichList [a][b] == onClosedList) continue;
-                    // 벽이라면 pass
+                    // 지나갈 수 없는 벽이라면 pass
                     if (walkability [a][b] == unwalkable) continue;
 
                     // 모서리가 벽인지 확인
@@ -90,39 +105,41 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
                     // 모서리가 벽이면 지나가지 못하므로 pass
                     if (corner == unwalkable) continue;
 
-                    // OpenList에 없다면
+                    // open list에 없다면
                     if (whichList [a][b] != onOpenList)
                     {
-                        // openList에 추가
+                        // open list 에 추가
                         newOpenListItemID += 1;
                         m = numberOfOpenListItems + 1;
                         openList [m] = newOpenListItemID;
                         openX [newOpenListItemID] = a;
                         openY [newOpenListItemID] = b;
 
-                        /* 지금까지 이동 거리인 G_cost 계산 */
+                        /* 지금 까지 이동거리인 G_cost 계산 */
+
                         if (abs(a - parentXval) == 1 && abs(b - parentYval) == 1)
-                            addedGCost = 14;      // 대각선 이동이라면
+                            addedGCost = 14;      // 부모 노드에서 대각선 이동이라면
                         else
                             addedGCost = 10;
                         
                         // Gcost 갱신
                         Gcost [a][b] = Gcost [parentXval][parentYval] + addedGCost;
 
-                        // 휴리스틱 = 맨하탄거리
+                        // 휴리스틱 계산 = 맨하탄 거리
                         Hcost [openList[m]] = 10 * (abs(a - targetX) + abs(b - targetY));
                         // Fcost 계산
                         Fcost [openList[m]] = Gcost [a][b] + Hcost [openList[m]];
                         // parent 사각형 저장
                         parentX [a][b] = parentXval; parentY [a][b] = parentYval;
 
+						// open list 에 추가
                         Push_Heap(m, numberOfOpenListItems);
                         numberOfOpenListItems += 1;
 
                         whichList [a][b] = onOpenList;
                     }
 
-                    // openList에 이미 있다면
+                    // open list 에 이미 있다면
                     else
                     {
                         if (abs(a - parentXval) == 1 && abs(b - parentYval) == 1)
@@ -132,15 +149,15 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
                         
                         tempGCost = Gcost [parentXval][parentYval] + addedGCost;
 
-                        // 새로 구한 GCost가 더 작다면 현재 GCost 갱신, parent 갱신
+                        // 새로 구한 G_cost가 더 작다면 현재 G_cost 갱신, parent 갱신
                         if (tempGCost < Gcost[a][b])
                         {
                             parentX [a][b] = parentXval;
                             parentY [a][b] = parentYval;
                             Gcost [a][b] = tempGCost;
 
-                            // 최소 힘인 openList에서 해당되는 아이템을 찾고
-                            // Fcost 갱신 후 재정렬
+                            // 최소 힙인 open list에서 바뀐 아이템을 찾고
+                            // F_cost 갱신 후 재정렬
                             Update_and_Sort_Heap(a, b, numberOfOpenListItems);
                         }
                     }
@@ -148,19 +165,19 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
             }   // for (b)
         }   // if (numberOfOpenListItems != 0)
 
-        //  open list 가 비었으면 no path
+        //  open list 가 비었다면 no path
         else
         {
             path = nonexistent; break;
         }
 
-        // 도착 위치가 open list에 들어가면 완료.
+        // 도착 위치가 open list에 들어가면 경로찾기 성공.
         if (whichList[targetX][targetY] == onOpenList)
         {
             path = found; break;
         }
     }
-    while (1); // 경로를 못찾거나 찾을 때까지 반복.
+    while (1); // 경로를 찾거나 open list가 텅 빌 때까지 반복
 
     // 경로를 찾았다면
     if (path == found)
@@ -174,21 +191,18 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
             pathX = tempX;
 
             pathLength += 1;
-        // 시작 위치에 도착하면 끝.
+        // 시작 위치에 도달하면 끝.
         }
         while (pathX != startX || pathY != startY);
 
-        // pathBank 할당
+        // pathBank 경로 길이 만큼 할당
         pathBank = new int[pathLength * 8];
 
-        /* 도착 위치에서 거꾸로 parent를 추적해서 경로 구하기 */
+        /* 도착위치에서 거꾸로 parent를 추적해서 경로 구하기 */
         pathX = targetX; pathY = targetY;
         cellPosition = pathLength * 2;
         do
         {
-            cout << "(" << pathX << ", " << pathY << ")";
-            if ((pathX != startX || pathY != startY)) cout << " -> ";
-            else cout << endl;
             cellPosition -= 2;
             pathBank[cellPosition] = pathX;
             pathBank[cellPosition + 1] = pathY;
@@ -198,6 +212,15 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
             pathX = tempX;
         }
         while (pathX != startX || pathY != startY);
+
+		// 경로 출력
+		cout << "(" << startX << ", " << startY << ") -> ";
+		for (int i = 0; i < pathLength * 2; i += 2)
+		{
+			cout << "(" << pathBank[i] << ", " << pathBank[i + 1] << ")";
+			if (i != pathLength * 2 - 2) cout << " -> ";
+		}
+		cout << endl;
     }
 
     return path;
@@ -205,6 +228,7 @@ int FindPath(int startingX, int startingY, int targetingX, int targetingY)
 
 void CheckCorner(int &corner, int a, int b, int parentXval, int parentYval)
 {
+	/* 대각선 방향으로 가려고 할 때 양 옆이 벽인지 확인 */
     corner = walkable;
     if (a == parentXval - 1)
     {
